@@ -271,7 +271,7 @@ Update `routes` to restrict the root `/*` to authenticated users only.
   "routes": [
     {
       "route": "/*",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": ["approved_user"]
     }
   ],
   "responseOverrides": {
