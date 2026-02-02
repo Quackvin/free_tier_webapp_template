@@ -256,11 +256,73 @@ When you open a PR, Azure creates a temporary `staging-<name>` environment with 
 
 ---
 
-## 5. Project Documentation & Agent Guide
+## 5. Security & Access Control (Azure AD)
+
+This project uses Azure Static Web Apps' built-in authentication. By default, SWA is public. Follow these steps to restrict access.
+
+### 5.1 Enforcing Authentication (Block Anonymous Traffic)
+To block all public access and force users to log in, update `frontend/public/staticwebapp.config.json` to route traffic to the `authenticated` role.
+
+**Method**: Allowed Roles
+Update `routes` to restrict the root `/*` to authenticated users only.
+
+```json
+{
+  "routes": [
+    {
+      "route": "/*",
+      "allowedRoles": ["authenticated"]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "statusCode": 302,
+      "redirect": "/.auth/login/aad"
+    }
+  }
+}
+```
+
+### 5.2 Access Models
+
+#### Option A: Open Sign-up (Organization Level)
+If you enable Azure Active Directory (AAD) without custom restrictions, **any** user with a Microsoft account (or within your Tenant, depending on AAD app settings) can log in.
+- **Config**: Use the `routes` block above.
+- **Result**: Anyone who successfully logs in with Microsoft is granted access.
+
+#### Option B: Invite Only (Restricted Access)
+To strictly limit access to specific individuals on the **Free Tier**:
+
+1.  **Upgrade Advice**: If possible, use the **Standard Plan** to define Custom Roles (e.g., `member`) and strictly block `authenticated`.
+2.  **Free Tier Workaround**:
+    - Use the configuration in **5.1** to block anonymous traffic.
+    - **In your API (`api/function_app.py`)**, implement a whitelist check.
+    - Validate the `x-ms-client-principal-name` (Email) request header against a list of allowed emails. if not allowed, return `403 Forbidden`.
+
+    ```python
+    # Example Guard Clause in API
+    allowed_users = ["alice@example.com", "bob@example.com"]
+    user_id = req.headers.get("x-ms-client-principal-name")
+    if user_id not in allowed_users:
+        return func.HttpResponse("Unauthorized User", status_code=403)
+    ```
+
+3.  **Role Management (Portal)**:
+    - Go to Azure Portal -> Static Web App -> **Role Management**.
+    - Click **Invite**.
+    - Enter email.
+    - Domain: (Leave default or select provider).
+    - Role: **authenticated** (or custom if Standard).
+    - Generate link.
+    - *Note*: On Free Tier, you cannot block *other* `authenticated` users at the routing level easily, so the API whitelist is recommended for strictness.
+
+---
+
+## 6. Project Documentation & Agent Guide
 
 Create the following documentation files in your project.
 
-### 5.1 `AGENT_GUIDE.md`
+### 6.1 `AGENT_GUIDE.md`
 Create this file in the project root. It serves as the Source of Truth for future agents.
 
 ```markdown
@@ -327,7 +389,7 @@ GitHub Actions deploys both frontend and API in a single step via the Azure Stat
 | `SQL_CONNECTION_STRING` | ODBC connection string for Azure SQL |
 ```
 
-### 5.2 "Getting Started" Section (for README.md)
+### 6.2 "Getting Started" Section (for README.md)
 
 Include these instructions in your project's `README.md` to guide new developers.
 
