@@ -254,6 +254,18 @@ This workflow handles the entire lifecycle:
 **Preview Environments**:
 When you open a PR, Azure creates a temporary `staging-<name>` environment with a unique URL. This allows you to test changes in a live environment before merging. Closing the PR automatically deletes this environment.
 
+### 4.2 Critical: Verify Workflow Configuration
+After Azure generates the workflow file in `.github/workflows/`, you **MUST** manually verify and update the deployment paths. The default template often mismatches Next.js static export settings.
+
+**The Fix:**
+Edit `.github/workflows/azure-static-web-apps-<name>.yml` and ensure the `with` block contains:
+
+```yaml
+app_location: "./frontend"
+api_location: "./api"      # Often defaults to "" (empty), causing API deployment failure
+output_location: "out"     # Default is often "build", but Next.js "export" uses "out"
+```
+
 ---
 
 ## 5. Security & Access Control (Azure AD)
